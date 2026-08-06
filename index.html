@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trend Rider Live v2</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Roboto,sans-serif;background:#0b0e14;color:#e6e6e6;padding:20px}
+.wrap{max-width:1200px;margin:0 auto}
+.head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+h1{font-size:23px;background:linear-gradient(90deg,#22c55e,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sub{color:#8b93a7;font-size:12px;margin-top:4px}
+.controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:#111620;border:1px solid #1b2230;border-radius:12px;padding:12px 16px;margin-bottom:16px}
+.grp{display:flex;gap:6px;align-items:center}
+.grp label{font-size:11px;color:#8b93a7;text-transform:uppercase;letter-spacing:.5px;margin-right:4px}
+.btn{background:#1a2130;border:1px solid #2a3444;color:#cbd3e1;padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer;transition:.15s;font-weight:600}
+.btn:hover{background:#232d40}
+.btn.active{background:linear-gradient(90deg,#22c55e,#16a34a);color:#fff;border-color:#22c55e}
+.btn.rf{background:#1a2130}
+.btn.rf.on{background:linear-gradient(90deg,#38bdf8,#0284c7);color:#fff;border-color:#38bdf8}
+select{background:#1a2130;border:1px solid #2a3444;color:#cbd3e1;padding:7px 10px;border-radius:8px;font-size:13px;cursor:pointer}
+.stats{display:flex;gap:8px;margin-left:auto}
+.chip{background:#151a24;border:1px solid #232a38;border-radius:10px;padding:6px 12px;font-size:12px}
+.chip b{font-size:16px;display:block}.chip.l b{color:#22c55e}.chip.s b{color:#ef4444}.chip.n b{color:#8b93a7}
+#status{font-size:12px;color:#8b93a7;margin-bottom:10px;min-height:16px}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid #2a3444;border-top-color:#38bdf8;border-radius:50%;animation:s .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes s{to{transform:rotate(360deg)}}
+.tbl-wrap{max-height:70vh;overflow-y:auto;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+table{width:100%;border-collapse:collapse;background:#111620}
+th{background:#0f141d;color:#8b93a7;font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:11px 9px;text-align:left;position:sticky;top:0;z-index:5}
+td{padding:11px 9px;border-top:1px solid #1b2230;font-size:13px;vertical-align:middle}
+tr:hover td{background:#161d2b}
+.rank{color:#5b6478;font-weight:700;width:26px}
+.sym{font-weight:700;font-size:14px}.q{color:#5b6478;font-size:9px;margin-left:2px}
+.num{font-variant-numeric:tabular-nums;text-align:right;font-weight:600}
+.sl{color:#f87171}.tp{color:#34d399}
+.rr{display:block;font-size:9px;color:#5b6478;font-weight:400}
+.adx{color:#fbbf24;text-align:center}
+.vol{color:#8b93a7;text-align:right;font-size:12px}
+.b{padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap}
+.b.long{background:rgba(34,197,94,.15);color:#22c55e}
+.b.short{background:rgba(239,68,68,.15);color:#ef4444}
+.b.neu{background:rgba(139,147,167,.12);color:#8b93a7}
+.fresh{font-size:12px}
+.r-long{border-left:3px solid #22c55e}.r-short{border-left:3px solid #ef4444}.r-neu{border-left:3px solid #2a3444}
+.dots{display:flex;gap:3px}
+.dot{font-size:8px;padding:2px 4px;border-radius:4px;color:#0b0e14;font-weight:700}
+.d-bull{background:#22c55e}.d-bear{background:#ef4444}.d-neu{background:#3b4354;color:#8b93a7}
+.ms{font-size:10px;color:#8b93a7;margin-top:3px}
+.mtf{min-width:130px}
+.empty{text-align:center;color:#5b6478;padding:30px}
+.offline{color:#fbbf24}
+.foot{color:#5b6478;font-size:11px;margin-top:14px;text-align:center}
+</style>
+</head>
+<body><div class="wrap">
+<div class="head">
+  <div><h1>🟢 Trend Rider Live <span style="font-size:13px">v2</span></h1>
+  <div class="sub">EMA 20/50/200 · ADX(14) · MTF 5m/15m/1h/4h/1D · SL=ATR×2 · TP 1.5R/3R · RSI + SuperTrend แก้แล้ว · ดึงสดจาก Binance USD-M</div></div>
+  <div class="stats">
+    <div class="chip l"><b id="cnt-l">0</b>LONG</div>
+    <div class="chip s"><b id="cnt-s">0</b>SHORT</div>
+    <div class="chip n"><b id="cnt-n">0</b>อื่นๆ</div>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="grp"><label>ทามเฟรม</label>
+    <button class="btn tf" data-tf="1m">1m</button>
+    <button class="btn tf" data-tf="15m">15m</button>
+    <button class="btn tf active" data-tf="1h">1h</button>
+    <button class="btn tf" data-tf="4h">4h</button>
+  </div>
+  <div class="grp"><label>แสดง</label>
+    <select id="filter">
+      <option value="signal">เฉพาะมีสัญญาณ</option>
+      <option value="all">ทั้งหมด (50)</option>
+      <option value="long">LONG เท่านั้น</option>
+      <option value="short">SHORT เท่านั้น</option>
+    </select>
+  </div>
+  <div class="grp"><label>R:R ขั้นต่ำ</label>
+    <select id="rrmin">
+      <option value="0">ทั้งหมด</option>
+      <option value="1.5" selected>≥ 1.5R</option>
+      <option value="2">≥ 2R</option>
+      <option value="3">≥ 3R</option>
+    </select>
+  </div>
+  <div class="grp"><label>Auto-refresh</label>
+    <select id="interval">
+      <option value="0">ปิด</option>
+      <option value="15">15 วิ</option>
+      <option value="30">30 วิ</option>
+      <option value="60" selected>60 วิ</option>
+      <option value="300">5 นาที</option>
+    </select>
+    <button class="btn rf on" id="rfbtn">⏸ หยุด</button>
+  </div>
+  <button class="btn" id="scan">🔄 สแกนเลย</button>
+</div>
+
+<div id="status"></div>
+<div class="tbl-wrap"><table><thead><tr>
+  <th>#</th><th>Signal</th><th>เหรียญ</th><th>Price</th><th>SL</th>
+  <th>TP1</th><th>TP2</th><th>ADX</th><th>RSI</th><th>ST</th><th>MACD</th><th>Vol 24h</th><th>MTF</th>
+</tr></thead><tbody id="body">
+  <tr><td colspan="13" class="empty">กำลังสแกน...</td></tr>
+</tbody></table>
+<div class="foot" id="foot">Trend Rider Live v2 · ข้อมูลจาก Binance USD-M Futures</div>
+</div>
+
+<script>
+// ====== Endpoints fallback (กันบล็อก regional / ISP) ======
+const ENDPOINTS=[
+  "https://fapi.binance.com",
+  "https://fapi1.binance.com",
+  "https://fapi2.binance.com",
+  "https://fapi3.binance.com"
+];
+let EP=0;
+async function api(path){
+  let lastErr;
+  for(let tries=0;tries<ENDPOINTS.length;tries++){
+    const base=ENDPOINTS[(EP+tries)%ENDPOINTS.length];
+    try{
+      const r=await fetch(base+path,{headers:{"User-Agent":"Mozilla/5.0"}});
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      return await r.json();
+    }catch(e){ lastErr=e; }
+  }
+  throw lastErr||new Error("all endpoints failed");
+}
+
+const EMA_FAST=20,EMA_SLOW=50,EMA_TREND=200,ADX_LEN=14,ADX_THRESH=25,SL_ATR=2,TP1R=1.5,TP2R=3;
+const RSI_LEN=14, ST_LEN=10, ST_MULT=3, MACD_F=12, MACD_S=26, MACD_SIG=9;
+const MTF=["5m","15m","1h","4h","1d"];
+let SIGNAL_TF="1h", timer=null, running=true, scanning=false, RR_MIN=0;
+
+const $=id=>document.getElementById(id);
+function ema(v,n){let k=2/(n+1),e=v[0],o=[e];for(let i=1;i<v.length;i++){e=v[i]*k+e*(1-k);o.push(e)}return o}
+function rma(v,n){let a=1/n,e=v[0],o=[e];for(let i=1;i<v.length;i++){e=v[i]*a+e*(1-a);o.push(e)}return o}
+function atr(h,l,c,n=14){let tr=[h[0]-l[0]];for(let i=1;i<c.length;i++)tr.push(Math.max(h[i]-l[i],Math.abs(h[i]-c[i-1]),Math.abs(l[i]-c[i-1])));return rma(tr,n)}
+function adx(h,l,c,n=14){let pdm=[],mdm=[],tr=[];for(let i=1;i<c.length;i++){let up=h[i]-h[i-1],dn=l[i-1]-l[i];pdm.push(up>dn&&up>0?up:0);mdm.push(dn>up&&dn>0?dn:0);tr.push(Math.max(h[i]-l[i],Math.abs(h[i]-c[i-1]),Math.abs(l[i]-c[i-1])))}if(tr.length<n+1)return[0];let ar=rma(tr,n),pdi=rma(pdm,n).map((p,i)=>ar[i]?100*p/ar[i]:0),mdi=rma(mdm,n).map((m,i)=>ar[i]?100*m/ar[i]:0),dx=pdi.map((p,i)=>(p+mdi[i])?100*Math.abs(p-mdi[i])/(p+mdi[i]):0);return rma(dx,n)}
+// ====== FIXED RSI (index ถูกต้อง: j=i-1) ======
+function rsi(c,n=14){
+  let g=[],l=[];for(let i=1;i<c.length;i++){let d=c[i]-c[i-1];g.push(d>0?d:0);l.push(d<0?-d:0)}
+  if(g.length<n)return[50];
+  let ag=rma(g,n),al=rma(l,n);
+  return c.map((_,i)=>{
+    if(i<n)return 50;
+    let j=i-1;
+    let rs=al[j]?ag[j]/al[j]:99;
+    return 100-100/(1+rs);
+  });
+}
+// ====== FIXED SuperTrend (TR[0]=h[0]-l[0] ไม่ใช้ c[-1]) ======
+function supertrend(h,l,c,len=10,mult=3){
+  let tr=[h[0]-l[0]];
+  for(let i=1;i<c.length;i++)tr.push(Math.max(h[i]-l[i],Math.abs(h[i]-c[i-1]),Math.abs(l[i]-c[i-1])));
+  let atrS=rma(tr,len);
+  let up=[],dn=[],st=[],dir=1;
+  for(let i=0;i<c.length;i++){
+    let mid=(h[i]+l[i])/2,ub=mid+mult*atrS[i],lb=mid-mult*atrS[i];
+    if(i===0){up.push(ub);dn.push(lb);st.push(ub);continue}
+    up.push(Math.max(ub,up[i-1]));dn.push(Math.min(lb,dn[i-1]));
+    if(c[i]>up[i-1])dir=1;else if(c[i]<dn[i-1])dir=-1;
+    st.push(dir===1?dn[i]:up[i]);
+  }
+  let lastDir=c.map((_,i)=>i===0?1:(c[i]>up[i-1]?1:c[i]<dn[i-1]?-1:st[i-1]>=up[i-1]?1:-1));
+  return{st,lastDir};
+}
+function macd(c,f=12,s=26,sg=9){let ef=ema(c,f),es=ema(c,s),line=ef.map((x,i)=>x-es[i]),sig=rma(line,sg),hist=line.map((x,i)=>x-sig[i]);return{line,sig,hist}}
+
+async function klines(sym,tf,limit=260){
+  try{let d=await api(`/fapi/v1/klines?symbol=${sym}&interval=${tf}&limit=${limit}`);
+  return{h:d.map(k=>+k[2]),l:d.map(k=>+k[3]),c:d.map(k=>+k[4])};}catch(e){return null}
+}
+function stateOf(k){if(!k||k.c.length<210)return"NEUTRAL";let ef=ema(k.c,EMA_FAST),es=ema(k.c,EMA_SLOW),et=ema(k.c,EMA_TREND),p=k.c.at(-1);
+  if(ef.at(-1)>es.at(-1)&&p>et.at(-1))return"BULL";if(ef.at(-1)<es.at(-1)&&p<et.at(-1))return"BEAR";return"NEUTRAL"}
+
+async function analyze(sym,vol){
+  let k=await klines(sym,SIGNAL_TF,300);
+  if(!k||k.c.length<210)return null;
+  let ef=ema(k.c,EMA_FAST),es=ema(k.c,EMA_SLOW),et=ema(k.c,EMA_TREND),a=adx(k.h,k.l,k.c,ADX_LEN),at=atr(k.h,k.l,k.c,14);
+  let price=k.c.at(-1),adxNow=a.at(-1),atrNow=at.at(-1);
+  let states={};
+  for(let tf of MTF){states[tf]=stateOf(await klines(sym,tf,260))}
+  let bull=Object.values(states).filter(s=>s==="BULL").length;
+  let bear=Object.values(states).filter(s=>s==="BEAR").length;
+  let fUp=[-3,-2,-1].some(i=>ef.at(i-1)<=es.at(i-1)&&ef.at(i)>es.at(i));
+  let fDn=[-3,-2,-1].some(i=>ef.at(i-1)>=es.at(i-1)&&ef.at(i)<es.at(i));
+  let dir=null;
+  if(ef.at(-1)>es.at(-1)&&price>et.at(-1)&&adxNow>ADX_THRESH&&bull>=3)dir="long";
+  else if(ef.at(-1)<es.at(-1)&&price<et.at(-1)&&adxNow>ADX_THRESH&&bear>=3)dir="short";
+  let entry=price,sl,tp1,tp2,risk;
+  if(dir==="long"){sl=entry-SL_ATR*atrNow;risk=entry-sl;tp1=entry+TP1R*risk;tp2=entry+TP2R*risk}
+  else if(dir==="short"){sl=entry+SL_ATR*atrNow;risk=sl-entry;tp1=entry-TP1R*risk;tp2=entry-TP2R*risk}
+  let fresh=dir==="long"?fUp:dir==="short"?fDn:false;
+  let align=dir==="long"?bull:dir==="short"?bear:Math.max(bull,bear);
+  let score=dir?align*20+adxNow+(fresh?15:0):-1;
+  // --- Indicators (FIXED) ---
+  let rsiArr=rsi(k.c,RSI_LEN), rsiNow=rsiArr.at(-1);
+  let st=supertrend(k.h,k.l,k.c,ST_LEN,ST_MULT), stDir=st.lastDir.at(-1);
+  let macdObj=macd(k.c,MACD_F,MACD_S,MACD_SIG), mLine=macdObj.line.at(-1), mSig=macdObj.sig.at(-1), mHist=macdObj.hist.at(-1);
+  let macdCross = mLine>mSig ? "bull" : (mLine<mSig ? "bear" : "neu");
+  let rrPlan = risk>0 ? (TP1R*risk)/risk : 0;
+  if(RR_MIN>0 && rrPlan<RR_MIN) return null;
+  return{sym,dir,price,sl,tp1,tp2,adx:adxNow,bull,bear,fresh,score,states,vol,
+         rsi:rsiNow, stDir, macdCross, mLine, mSig, mHist};
+}
+function fmt(x){return x==null?"–":(+x).toPrecision(6).replace(/\.?0+$/,"")}
+function fmtVol(v){return v>=1e9?(v/1e9).toFixed(2)+"B":v>=1e6?(v/1e6).toFixed(1)+"M":(v/1e3).toFixed(0)+"K"}
+
+function render(list){
+  let f=$("filter").value,rows="";
+  let view=list.filter(r=>{if(f==="signal")return r.dir;if(f==="long")return r.dir==="long";if(f==="short")return r.dir==="short";return true});
+  view.sort((a,b)=>b.score-a.score);
+  let cl=0,cs=0,cn=0;
+  view.forEach((r,i)=>{
+    let badge=r.dir==="long"?`<span class='b long'>🟢 LONG</span>`:r.dir==="short"?`<span class='b short'>🔴 SHORT</span>`:`<span class='b neu'>– เฝ้าดู</span>`;
+    if(r.dir==="long")cl++;else if(r.dir==="short")cs++;else cn++;
+    let fresh=r.fresh?`<span class='fresh'>🔥</span>`:"";
+    let dots=MTF.map(tf=>{let s=r.states[tf],c=s==="BULL"?"d-bull":s==="BEAR"?"d-bear":"d-neu";return `<span class='dot ${c}' title='${tf}:${s}'>${tf}</span>`}).join("");
+    let rc=r.dir==="long"?"r-long":r.dir==="short"?"r-short":"r-neu";
+    let rsiColor=r.rsi>70?"#f87171":r.rsi<30?"#34d399":"#cbd3e1";
+    let stBadge=r.stDir===1?`<span class='b long'>▲</span>`:`<span class='b short'>▼</span>`;
+    let macdColor=r.macdCross==="bull"?"#22c55e":r.macdCross==="bear"?"#ef4444":"#8b93a7";
+    rows+=`<tr class='${rc}'><td class='rank'>${i+1}</td><td>${badge} ${fresh}</td>
+      <td class='sym'>${r.sym.replace('USDT','')}<span class='q'>USDT</span></td>
+      <td class='num'>${fmt(r.price)}</td><td class='num sl'>${fmt(r.sl)}</td>
+      <td class='num tp'>${fmt(r.tp1)}<span class='rr'>1.5R</span></td>
+      <td class='num tp'>${fmt(r.tp2)}<span class='rr'>3R</span></td>
+      <td class='num adx'>${r.adx.toFixed(1)}</td>
+      <td class='num' style='color:${rsiColor}'>${r.rsi.toFixed(1)}</td>
+      <td style='text-align:center'>${stBadge}</td>
+      <td class='num' style='color:${macdColor}'>${r.macdCross==="bull"?"▲":"▼"} ${r.mHist.toFixed(2)}</td>
+      <td class='vol'>${fmtVol(r.vol)}</td>
+      <td class='mtf'><div class='dots'>${dots}</div><div class='ms'>${r.bull}B / ${r.bear}S</div></td></tr>`;
+  });
+  $("body").innerHTML=rows||`<tr><td colspan='13' class='empty'>ไม่มีข้อมูลตรงเงื่อนไข</td></tr>`;
+  $("cnt-l").textContent=list.filter(r=>r.dir==="long").length;
+  $("cnt-s").textContent=list.filter(r=>r.dir==="short").length;
+  $("cnt-n").textContent=list.filter(r=>!r.dir).length;
+}
+
+let lastList=[];
+function saveCache(list,src){
+  try{localStorage.setItem("tr_v2_cache",JSON.stringify({list,t:Date.now(),src}));}catch(e){}
+}
+function loadCache(){
+  try{let x=JSON.parse(localStorage.getItem("tr_v2_cache")||"null");return x;}catch(e){return null;}
+}
+function beep(){
+  try{let ctx=new (window.AudioContext||window.webkitAudioContext)();
+    let o=ctx.createOscillator();o.connect(ctx.destination);o.frequency.value=880;o.start();
+    setTimeout(()=>ctx.close(),160);}catch(e){}
+}
+function flashTitle(){
+  let n=0,orig=document.title;
+  let iv=setInterval(()=>{document.title=(n++%2)?"🔔 สแกนเสร็จ!":"🟢 Trend Rider Live v2";if(n>6){clearInterval(iv);document.title=orig;}},500);
+}
+async function scan(){
+  if(scanning)return;scanning=true;
+  $("status").innerHTML=`<span class='spin'></span>กำลังดึงรายชื่อเหรียญ...`;
+  let info;
+  try{info=await api("/fapi/v1/ticker/24hr");}
+  catch(e){
+    let c=loadCache();
+    if(c&&c.list){lastList=c.list;render(c.list);
+      $("status").innerHTML=`<span class='offline'>⚠️ ออฟไลน์ — โชว์สแกนล่าสุด (${new Date(c.t).toLocaleTimeString('th-TH')}) · ${c.list.length} เหรียญ</span>`;
+    }else{$("status").textContent="❌ เชื่อม Binance ไม่ได้ และไม่มีแคช";}
+    scanning=false;return;
+  }
+  let cands=info.filter(t=>t.symbol.endsWith("USDT")).sort((a,b)=>b.quoteVolume-a.quoteVolume).slice(0,50);
+  let vmap={};cands.forEach(t=>vmap[t.symbol]=+t.quoteVolume);
+  let syms=cands.map(t=>t.symbol),out=[];
+  for(let i=0;i<syms.length;i++){
+    $("status").innerHTML=`<span class='spin'></span>สแกน ${SIGNAL_TF} · ${i+1}/${syms.length} · ${syms[i]}`;
+    let r=await analyze(syms[i],vmap[syms[i]]);if(r)out.push(r);
+  }
+  lastList=out;render(out);saveCache(out,"live");
+  let t=new Date().toLocaleTimeString('th-TH');
+  $("status").textContent=`✅ สแกน 50 เหรียญเสร็จ · TF=${SIGNAL_TF} · ${t}`;
+  $("foot").textContent=`Trend Rider Live v2 · อัปเดต ${t} · แหล่ง: Binance Live`;
+  beep();flashTitle();
+  scanning=false;
+}
+
+document.querySelectorAll(".tf").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tf").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");SIGNAL_TF=b.dataset.tf;scan();
+});
+$("filter").onchange=()=>render(lastList);
+$("rrmin").onchange=()=>{RR_MIN=+$("rrmin").value;render(lastList)};
+$("scan").onclick=scan;
+$("rfbtn").onclick=()=>{
+  running=!running;let btn=$("rfbtn");
+  if(running){btn.textContent="⏸ หยุด";btn.classList.add("on");
+    let sec=+$("interval").value;if(sec>0){timer=setInterval(scan,sec*1000)}scan();
+  }else{btn.textContent="▶ เริ่ม";btn.classList.remove("on");clearInterval(timer)}
+};
+$("interval").onchange=()=>{if(running){clearInterval(timer);let sec=+$("interval").value;if(sec>0)timer=setInterval(scan,sec*1000)}};
+// เริ่มอัตโนมัติ + auto-refresh 60 วิ
+let sec0=+$("interval").value;if(sec0>0)timer=setInterval(scan,sec0*1000);
+scan();
+</script>
+</body></html>
