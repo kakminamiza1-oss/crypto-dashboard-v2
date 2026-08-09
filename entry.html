@@ -91,7 +91,7 @@
 <div class="wrap">
   <div class="controls">
     <div class="fld">
-      <label>เหรียญ (เช่น BTC, ETH, SOL)</label>
+      <label>เหรียญเดียว (หรือรันหลายเหรียญด้านล่าง)</label>
       <input id="sym" placeholder="BTCUSDT" value="BTCUSDT">
     </div>
     <div class="fld">
@@ -110,6 +110,21 @@
     </div>
     <button id="go">วิเคราะห์จุดเข้า</button>
   </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h3>🚀 รันหลายเหรียญ + จัดอันดับ (ตามคะแนน Dip-Buy / R:R / MTF)</h3>
+    <div class="controls" style="margin-bottom:8px">
+      <div class="fld" style="flex:1;min-width:280px">
+        <label>เหรียญหลายตัว (คอมมาแยก เช่น BTC,ETH,SOL หรือเว้นวรรค)</label>
+        <input id="multiSym" placeholder="BTC, ETH, SOL, BNB, XRP, DOGE" value="BTC, ETH, SOL, BNB, XRP, DOGE, LINK, AVAX">
+      </div>
+      <button id="multiGo" class="ghost">🔎 สแกน + จัดอันดับ</button>
+    </div>
+    <div id="multiStatus" class="status"></div>
+    <table class="table2" id="rankTbl" style="margin-top:8px"></table>
+    <div class="note">คลิกแถวเพื่อโหลดเหรียญนั้นเข้าเครื่องมือวิเคราะห์จุดเข้าเดี่ยวด้านบน · คะแนน = (Higher-TF BULL × 20) + (Dip-Buy ผ่าน? 25) + R:R×10 + (ADX>25?10:0) − (RSI>66?15:0)</div>
+  </div>
+
   <div id="status" class="status">⏳ รอคำสั่ง…</div>
 
   <div class="grid2">
@@ -229,7 +244,7 @@ function adx(h,l,c,n=14){
 
 // ---------- per-TF state ----------
 function tfState(kl){
-  const c=kl.map(k=>k[4]),h=kl.map(k=>k[2]),l=kl.map(k=>k[3]),o=kl.map(k=>k[1]);
+  const c=kl.map(k=>+k[4]),h=kl.map(k=>+k[2]),l=kl.map(k=>+k[3]),o=kl.map(k=>+k[1]);
   const e20=ema(c,20),e50=ema(c,50),e100=ema(c,100),e200=ema(c,200);
   const r=rsi(c), m=macd(c), st=supertrend(h,l,c,10,3);
   const a=atr(h,l,c,14); const d=adx(h,l,c,14);
@@ -240,9 +255,80 @@ function tfState(kl){
   let state = "NEU";
   if(uptrend && (stLast.dir===1) && mom>=0) state="BULL";
   else if(!uptrend && stLast.dir===-1 && mom<0) state="BEAR";
-  return {c,h,l,o,px,e20,e50,e100,e200,r,mom,stDir:stLast.dir,atr:a[a.length-1],adx:d,
+  return {c,h,l,o,px:+px,e20,e50,e100,e200,r:+r,mom:+mom,stDir:stLast.dir,atr:+a[a.length-1],adx:+d,
           uptrend,cooled,nearSup,state,
           sup:Math.min(e20,e50), res:Math.max(...h.slice(-60))*0.995};
+}
+
+// ---------- multi-symbol scan + ranking (offer #2) ----------
+async function scanAll(){
+  const box=document.getElementById("multiSym").value;
+  const raw=box.split(/[\s,]+/).map(s=>s.trim().toUpperCase()).filter(Boolean)
+                .map(s=>s.includes("USDT")?s:s+"USDT");
+  if(!raw.length){ document.getElementById("multiStatus").textContent="❌ ใส่เหรียญก่อน"; return; }
+  const tf=CURTF, style=document.getElementById("style").value;
+  const MS=document.getElementById("multiStatus");
+  MS.innerHTML="⏳ สแกน "+raw.length+" เหรียญ @ "+tf+" …";
+  const TFS=["5m","15m","1h","4h","1d"];
+  const results=[];
+  for(let i=0;i<raw.length;i++){
+    const sym=raw[i];
+    try{
+      const kl=await fetch(FAPI+`klines?symbol=${sym}&interval=${tf}&limit=240`).then(r=>r.json());
+      if(!Array.isArray(kl)||kl.length<60){ results.push({sym,err:"no data"}); continue; }
+      const A=tfState(kl);
+      const mtf={}; let bull=0,bear=0;
+      for(const t of TFS){ const k=await fetch(FAPI+`klines?symbol=${sym}&interval=${t}&limit=240`).then(r=>r.json());
+        mtf[t]=tfState(k); if(mtf[t].state==="BULL")bull++; else if(mtf[t].state==="BEAR")bear++; }
+      const higherBull=["1h","4h","1d"].filter(t=>mtf[t].state==="BULL").length;
+      const higherBear=["1h","4h","1d"].filter(t=>mtf[t].state==="BEAR").length;
+      // plan
+      const px=A.px, atr=A.atr;
+      let entry,sl,R,dir,tp1,tp2;
+      if(style==="long"){
+        entry=A.nearSup?px:A.sup*(1+0.002); sl=Math.min(A.sup,entry-atr*1.1); R=entry-sl;
+        tp1=entry+R*1.5; tp2=entry+R*3.0; dir="long";
+      } else {
+        const nearRes=Math.abs(px-A.res)/A.res<0.022;
+        entry=nearRes?px:A.res*(1-0.002); sl=entry+atr*1.1; R=sl-entry;
+        tp1=entry-R*1.5; tp2=entry-R*3.0; dir="short";
+      }
+      const rr=Math.abs(tp1-entry)/Math.abs(entry-sl);
+      const dipOK = style==="long" ? (A.uptrend && higherBull>=2 && A.cooled && A.r<=66)
+                                   : (A.stDir===-1 && higherBear>=1 && A.r>=55);
+      // score
+      let score=higherBull*20 + (dipOK?25:0) + rr*10 + (A.adx>25?10:0) - (A.r>66?15:0);
+      score=Math.round(score*10)/10;
+      results.push({sym,px:px.toFixed(px<1?5:2),r:A.r.toFixed(1),adx:A.adx.toFixed(1),st:A.stDir===1?"G":"R",
+        higherBull,bull,bear,rr:rr.toFixed(2),score,dipOK,dir,entry:entry.toFixed(entry<1?5:2),
+        sl:sl.toFixed(sl<1?5:2),tp1:tp1.toFixed(tp1<1?5:2),tp2:tp2.toFixed(tp2<1?5:2),
+        mtf:TFS.map(t=>mtf[t].state[0]).join('')});
+    }catch(e){ results.push({sym,err:String(e.message||e)}); }
+    MS.innerHTML="⏳ สแกน "+(i+1)+"/"+raw.length+" … "+sym;
+  }
+  results.sort((a,b)=> (b.score||-999)-(a.score||-999));
+  const t=document.getElementById("rankTbl");
+  t.innerHTML=`<tr><th>#</th><th>เหรียญ</th><th>ราคา</th><th>RSI</th><th>ADX</th><th>ST</th>
+    <th>MTF</th><th>H-Bull</th><th>R:R</th><th>คะแนน</th><th>สถานะ</th><th>Entry</th><th>SL</th><th>TP1</th></tr>`+
+    results.map((r,i)=>{
+      if(r.err) return `<tr><td>${i+1}</td><td>${r.sym}</td><td colspan="12" class="neg">${r.err}</td></tr>`;
+      const cls=r.dipOK?'pos':'neu';
+      return `<tr data-sym="${r.sym}" style="cursor:pointer" title="คลิกเพื่อโหลดเครื่องมือเดี่ยว">
+        <td>${i+1}</td><td><b>${r.sym.replace('USDT','')}</b></td><td>${r.px}</td>
+        <td>${r.r}</td><td>${r.adx}</td><td>${r.st}</td><td>${r.mtf}</td><td>${r.higherBull}/3</td>
+        <td><b class="${r.rr>=1.5?'pos':'neu'}">${r.rr}</b></td>
+        <td><b class="${cls}">${r.score}</b></td>
+        <td class="${cls}">${r.dipOK?'✅ ผ่าน':'⛔ รอ'}</td>
+        <td>${r.entry}</td><td class="neg">${r.sl}</td><td class="pos">${r.tp1}</td></tr>`;
+    }).join('');
+  // click row -> load single
+  t.querySelectorAll("tr[data-sym]").forEach(tr=>tr.onclick=()=>{
+    document.getElementById("sym").value=tr.dataset.sym;
+    CUR=tr.dataset.sym; CURTF=document.getElementById("tf").value;
+    analyzeEntry();
+    window.scrollTo({top:0,behavior:"smooth"});
+  });
+  MS.innerHTML='<span class="ok">✅ สแกน '+results.length+' เหรียญ เรียบร้อย @ '+new Date().toLocaleString("th-TH")+' — เรียงตามคะแนนแล้ว</span>';
 }
 
 // ---------- main analyze ----------
@@ -419,6 +505,7 @@ async function init(){
   inp.addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("go").click();});
   document.getElementById("style").onchange=()=>analyzeEntry();
   document.getElementById("tf").onchange=()=>{ CURTF=document.getElementById("tf").value; };
+  document.getElementById("multiGo").onclick=()=>{ CURTF=document.getElementById("tf").value; scanAll(); };
   ["psBudget","psLev","psEntry","psSl","psTp"].forEach(id=>document.getElementById(id).addEventListener("input",renderSize));
   analyzeEntry();
 }
