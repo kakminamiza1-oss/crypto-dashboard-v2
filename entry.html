@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Futures Entry Analyzer — Crypto TH</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#121826; --panel2:#16203a; --line:#23304d;
+    --txt:#e6edf3; --mut:#8b98ad; --grn:#26d07c; --red:#ff5b5b;
+    --blu:#4aa8ff; --yel:#ffce4a; --pur:#bc8cff; --chip:#1c2740;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#16213c 0%,var(--bg) 55%);
+        color:var(--txt);font-family:"Segoe UI",Tahoma,"Leelawadee UI",sans-serif;font-size:14px}
+  header{padding:14px 18px;background:var(--panel);border-bottom:1px solid var(--line);
+        display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  h1{font-size:17px;margin:0;color:var(--blu)}
+  .nav{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+  .nav a{font-size:12.5px;color:var(--mut);text-decoration:none;background:var(--chip);
+        border:1px solid var(--line);padding:6px 11px;border-radius:8px}
+  .nav a.on{color:var(--txt);border-color:var(--blu);box-shadow:0 0 0 1px rgba(74,168,255,.25)}
+  .nav a:hover{color:var(--txt)}
+  .wrap{padding:16px 18px;max-width:1180px;margin:0 auto}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px}
+  .fld{display:flex;flex-direction:column;gap:5px}
+  label{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+  input,select{background:var(--panel);border:1px solid var(--line);color:var(--txt);
+        padding:9px 11px;border-radius:9px;font-size:14px;min-width:120px;outline:none}
+  input:focus,select:focus{border-color:var(--blu)}
+  input#sym{text-transform:uppercase;min-width:150px;font-weight:700}
+  button{background:linear-gradient(180deg,#2a7fff,#1f6ae0);color:#fff;border:0;
+        padding:10px 18px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer}
+  button.ghost{background:var(--panel2);border:1px solid var(--line);color:var(--txt)}
+  .status{font-size:12.5px;color:var(--mut);margin:6px 0 14px;min-height:18px}
+  .status .ok{color:var(--grn)} .status .err{color:var(--red)}
+  .grid2{display:grid;grid-template-columns:1.05fr .95fr;gap:16px}
+  @media(max-width:860px){.grid2{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+        border-radius:14px;padding:16px;margin-bottom:16px}
+  .card h3{margin:0 0 10px;font-size:13px;color:var(--mut);letter-spacing:.5px;text-transform:uppercase}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  td{padding:7px 8px;border-bottom:1px solid var(--line)}
+  td.k{color:var(--mut);width:44%} td.v{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+  .pos{color:var(--grn)} .neg{color:var(--red)} .neu{color:var(--mut)}
+  .dir{display:inline-block;padding:5px 12px;border-radius:9px;font-weight:800;font-size:14px}
+  .dir.long{background:rgba(38,208,124,.15);color:var(--grn);border:1px solid var(--grn)}
+  .dir.short{background:rgba(255,91,91,.15);color:var(--red);border:1px solid var(--red)}
+  .dir.wait{background:var(--chip);color:var(--mut);border:1px solid var(--line)}
+  .mtf{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+  .mtf .t{font-size:11px;padding:4px 9px;border-radius:7px;font-weight:800}
+  .mtf .BULL{background:var(--grn);color:#04130b} .mtf .BEAR{background:var(--red);color:#1a0303}
+  .mtf .NEU{background:var(--chip);color:var(--mut);border:1px solid var(--line)}
+  .plan{display:flex;flex-direction:column;gap:10px}
+  .level{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:10px;border:1px solid var(--line)}
+  .level .lab{font-weight:700;font-size:13px}
+  .level .px{font-variant-numeric:tabular-nums;font-weight:800;font-size:15px}
+  .level.entry{background:rgba(74,168,255,.12);border-color:var(--blu)}
+  .level.sl{background:rgba(255,91,91,.12);border-color:var(--red)}
+  .level.tp{background:rgba(38,208,124,.12);border-color:var(--grn)}
+  .ps-inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px}
+  .ps-inputs label{display:block;color:var(--mut);font-size:12px;margin-bottom:3px}
+  .table2{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+  .table2 th,.table2 td{padding:8px 10px;border:1px solid var(--line);text-align:center}
+  .table2 th{background:var(--panel2);color:var(--mut)}
+  .table2 tr:nth-child(even){background:#11161d}
+  .note{color:var(--mut);font-size:12px;margin-top:8px;line-height:1.6}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;background:var(--chip);border:1px solid var(--line)}
+  .consensus{font-weight:800;font-size:15px}
+  .go{color:var(--grn)} .no{color:var(--red)}
+  svg{width:100%;height:auto;display:block}
+  #tip{position:absolute;background:#000d;color:#fff;padding:8px 10px;border-radius:6px;
+        font-size:12px;pointer-events:none;display:none;border:1px solid var(--line);z-index:5;white-space:nowrap}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-top:6px}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .dot{width:14px;height:3px;border-radius:2px;display:inline-block}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎯 Futures Entry Analyzer</h1>
+  <nav class="nav">
+    <a href="index.html">Trend Rider</a>
+    <a href="scan.html">Scan</a>
+    <a href="dipbuy.html">Dip-Buy</a>
+    <a href="entry.html" class="on">Entry</a>
+    <a href="accum.html">Accum</a>
+  </nav>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="fld">
+      <label>เหรียญ (เช่น BTC, ETH, SOL)</label>
+      <input id="sym" placeholder="BTCUSDT" value="BTCUSDT">
+    </div>
+    <div class="fld">
+      <label>TIMEFRAME วิเคราะห์</label>
+      <select id="tf">
+        <option>5m</option><option>15m</option><option>1h</option>
+        <option selected>4h</option><option>1d</option>
+      </select>
+    </div>
+    <div class="fld">
+      <label>สไตล์</label>
+      <select id="style">
+        <option value="long" selected>Dip-Buy Long</option>
+        <option value="short">Pullback Short</option>
+      </select>
+    </div>
+    <button id="go">วิเคราะห์จุดเข้า</button>
+  </div>
+  <div id="status" class="status">⏳ รอคำสั่ง…</div>
+
+  <div class="grid2">
+    <!-- LEFT: chart + plan -->
+    <div>
+      <div class="card">
+        <h3>กราฟ + โซนเข้า / SL / TP</h3>
+        <div id="chartBox" style="position:relative">
+          <svg id="chart" viewBox="0 0 1000 420"></svg>
+          <div id="tip"></div>
+        </div>
+        <div class="legend">
+          <span><i class="dot" style="background:#fff"></i>แท่งเทียน</span>
+          <span><i class="dot" style="background:var(--blu)"></i>EMA20</span>
+          <span><i class="dot" style="background:var(--pur)"></i>EMA50</span>
+          <span><i class="dot" style="background:var(--red)"></i>SL</span>
+          <span><i class="dot" style="background:var(--grn)"></i>TP1/TP2</span>
+        </div>
+        <div class="note" id="chartTf"></div>
+      </div>
+
+      <div class="card">
+        <h3>แผนเทรด (Entry / SL / TP)</h3>
+        <div class="plan" id="plan">—</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: indicators + MTF + sizing -->
+    <div>
+      <div class="card">
+        <h3>ตัวชี้วัด (TIMEFRAME ที่เลือก)</h3>
+        <table id="indTbl"><tr><td class="k">—</td><td class="v">—</td></tr></table>
+      </div>
+
+      <div class="card">
+        <h3>ยืนยันกรอบเวลาหลายช่วง (MTF)</h3>
+        <div class="mtf" id="mtfDots"></div>
+        <div class="note">BULL = uptrend + momentum · BEAR = downtrend · NEU = sideway</div>
+        <div style="margin-top:10px">Consensus: <span class="consensus" id="consensus">—</span></div>
+        <div class="note" id="consensusNote"></div>
+      </div>
+
+      <div class="card">
+        <h3>คำนวณ Position (Futures)</h3>
+        <div class="ps-inputs">
+          <div><label>งบ (USDT)</label><input id="psBudget" type="number" value="100" min="20" max="150" step="5"></div>
+          <div><label>Leverage</label>
+            <select id="psLev"><option>3</option><option>4</option><option selected>5</option><option>10</option></select></div>
+          <div><label>Entry</label><input id="psEntry" type="number" value="0" step="any"></div>
+          <div><label>SL</label><input id="psSl" type="number" value="0" step="any"></div>
+          <div><label>TP</label><input id="psTp" type="number" value="0" step="any"></div>
+        </div>
+        <table class="table2" id="psTable"></table>
+        <div class="note" id="psNote"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    ตัวชี้วัด: <b>RSI(14)</b>, <b>EMA(20/50/100/200)</b>, <b>SuperTrend(10,3)</b>, <b>MACD(12,26,9)</b>,
+    <b>ATR(14)</b>, <b>ADX(14)</b> · สไตล์ <b>Dip-Buy</b> (uptrend + pullback เทส support + RSI เย็น) · ไม่ใช่คำแนะนำลงทุน
+  </div>
+</div>
+
+<script>
+const FAPI="https://fapi.binance.com/fapi/v1/";
+const TFS=["5m","15m","1h","4h","1d"];
+const MTF_HIGHER=["1h","4h","1d"];
+let CUR="BTCUSDT", CURTF="4h", symList=[];
+
+// ---------- indicator math (proven from dipbuy.html + ADX) ----------
+function emaArr(arr,n){ const k=2/(n+1),out=[]; let e=arr[0];
+  for(let i=0;i<arr.length;i++){ e=(i===0)?arr[0]:arr[i]*k+e*(1-k); out.push(e);} return out; }
+function ema(arr,n){ if(arr.length<n) return null; return emaArr(arr,n).pop(); }
+function rsi(closes,n=14){ if(closes.length<n+1) return null;
+  let g=0,l=0; for(let i=1;i<closes.length;i++){const d=closes[i]-closes[i-1];
+    if(d>=0)g+=d; else l-=d;}
+  g/=n; l/=n; if(l===0)return 100; return 100-100/(1+g/l); }
+function macd(closes){ const e12=emaArr(closes,12),e26=emaArr(closes,26);
+  const m=e12.map((v,i)=>v-e26[i]); const sig=emaArr(m,9);
+  const hist=m.map((v,i)=>v-sig[i]); return {macd:m,macdS:sig,hist}; }
+function atr(h,l,c,n=14){ let tr=[Math.abs(h[0]-c[0])];
+  for(let i=1;i<c.length;i++) tr.push(Math.max(h[i]-l[i],Math.abs(h[i]-c[i-1]),Math.abs(l[i]-c[i-1])));
+  let a=tr.slice(0,n).reduce((x,y)=>x+y,0)/n;
+  const out=[a]; for(let i=n;i<tr.length;i++){ a=(a*(n-1)+tr[i])/n; out.push(a);} return out; }
+function supertrend(h,l,c,n=10,m=3){ const a=atr(h,l,c,n); const out=[];
+  let upPrev=null,dnPrev=null,st=0,dir=1;
+  for(let i=0;i<c.length;i++){ const mid=(h[i]+l[i])/2; const ub=mid+m*a[i]; const lb=mid-m*a[i];
+    if(i===0){ upPrev=ub; dnPrev=lb; st=lb; dir=1; out.push({st,dir}); continue; }
+    let up=ub<upPrev||c[i-1]>upPrev?ub:upPrev;
+    let dn=lb>dnPrev||c[i-1]<dnPrev?lb:dnPrev;
+    if(c[i]<=st) dir=-1; else if(c[i]>=st) dir=1;
+    st=(dir===1)?dn:up; upPrev=up; dnPrev=dn; out.push({st,dir}); }
+  return out; }
+function adx(h,l,c,n=14){
+  const len=c.length; if(len<n+1) return null;
+  let tr=0,plusDM=0,minusDM=0;
+  const trA=[],pdmA=[],mdmA=[];
+  let pTR=0,pPDM=0,pMDM=0;
+  for(let i=1;i<len;i++){
+    const up=h[i]-h[i-1], dn=l[i-1]-l[i];
+    const pDM= up>dn && up>0 ? up : 0;
+    const mDM= dn>up && dn>0 ? dn : 0;
+    const tR=Math.max(h[i]-l[i],Math.abs(h[i]-c[i-1]),Math.abs(l[i]-c[i-1]));
+    if(i===1){ pTR=tR; pPDM=pDM; pMDM=mDM; }
+    else { pTR=pTR*(n-1)/n+tR; pPDM=pPDM*(n-1)/n+pDM; pMDM=pMDM*(n-1)/n+mDM; }
+    trA.push(pTR); pdmA.push(pPDM); mdmA.push(pMDM);
+  }
+  const pdi=pdmA.map((v,i)=>100*v/trA[i]);
+  const mdi=mdmA.map((v,i)=>100*v/trA[i]);
+  const dx=pdi.map((v,i)=>{const s=v+mdi[i]; return s===0?0:100*Math.abs(v-mdi[i])/s;});
+  // ADX = Wilder smooth of DX
+  let a=dx.slice(0,n).reduce((x,y)=>x+y,0)/n;
+  for(let i=n;i<dx.length;i++) a=(a*(n-1)+dx[i])/n;
+  return a;
+}
+
+// ---------- per-TF state ----------
+function tfState(kl){
+  const c=kl.map(k=>k[4]),h=kl.map(k=>k[2]),l=kl.map(k=>k[3]),o=kl.map(k=>k[1]);
+  const e20=ema(c,20),e50=ema(c,50),e100=ema(c,100),e200=ema(c,200);
+  const r=rsi(c), m=macd(c), st=supertrend(h,l,c,10,3);
+  const a=atr(h,l,c,14); const d=adx(h,l,c,14);
+  const px=c[c.length-1], stLast=st[st.length-1], mom=m.hist[m.hist.length-1];
+  const uptrend = px>e100 && e50>e100 && e20>=e50*0.992;
+  const cooled = r!==null && r>=38 && r<=66;
+  const nearSup = Math.abs(px-e20)/e20<0.022 || Math.abs(px-e50)/e50<0.028;
+  let state = "NEU";
+  if(uptrend && (stLast.dir===1) && mom>=0) state="BULL";
+  else if(!uptrend && stLast.dir===-1 && mom<0) state="BEAR";
+  return {c,h,l,o,px,e20,e50,e100,e200,r,mom,stDir:stLast.dir,atr:a[a.length-1],adx:d,
+          uptrend,cooled,nearSup,state,
+          sup:Math.min(e20,e50), res:Math.max(...h.slice(-60))*0.995};
+}
+
+// ---------- main analyze ----------
+async function analyzeEntry(){
+  const sym=CUR, tf=CURTF, style=document.getElementById("style").value;
+  const ST=document.getElementById("status");
+  ST.innerHTML="⏳ ดึงข้อมูล "+sym+" ("+tf+") …";
+  try{
+    const kl=await fetch(FAPI+`klines?symbol=${sym}&interval=${tf}&limit=240`).then(r=>r.json());
+    if(!Array.isArray(kl)||kl.length<60){ ST.innerHTML='<span class="err">❌ ข้อมูลไม่พอ หรือสัญลักษณ์ไม่ถูก ("'+sym+'")</span>'; return; }
+    const A=tfState(kl);
+    // MTF
+    const mtf={}; let bull=0,bear=0;
+    for(const t of TFS){
+      const k=await fetch(FAPI+`klines?symbol=${sym}&interval=${t}&limit=240`).then(r=>r.json());
+      const s=tfState(k); mtf[t]=s; if(s.state==="BULL")bull++; else if(s.state==="BEAR")bear++;
+    }
+    const higherBull=MTF_HIGHER.filter(t=>mtf[t].state==="BULL").length;
+    const higherBear=MTF_HIGHER.filter(t=>mtf[t].state==="BEAR").length;
+
+    // ----- entry / SL / TP -----
+    const px=A.px, atr=A.atr;
+    let entry, sl, tp1, tp2, dir, R;
+    if(style==="long"){
+      // dip-buy: enter near support; if price far above support, suggest limit at support
+      entry = A.nearSup ? px : A.sup*(1+0.002);
+      sl    = Math.min(A.sup, entry-atr*1.1);   // SL below support
+      R = entry - sl;
+      tp1 = entry + R*1.5; tp2 = entry + R*3.0;
+      dir="long";
+    } else {
+      // pullback short: enter near resistance; if price far below resistance, suggest limit at resistance
+      const nearRes = Math.abs(px-A.res)/A.res < 0.022;
+      entry = nearRes ? px : A.res*(1-0.002);
+      sl    = entry + atr*1.1;                   // SL above entry
+      R = sl - entry;
+      tp1 = entry - R*1.5; tp2 = entry - R*3.0;
+      dir="short";
+    }
+    // validity for LONG dip-buy
+    const longOK = style==="long" && A.uptrend && higherBull>=2 && A.cooled && A.r<=66;
+    const shortOK = style==="short" && A.stDir===-1 && higherBear>=2 && A.r>=55;
+    const go = (style==="long")?longOK:shortOK;
+
+    // ----- render indicators -----
+    const clsR = A.r>=70?'neg':A.r<=30?'pos':'neu';
+    document.getElementById("indTbl").innerHTML=`
+      <tr><td class="k">ราคา</td><td class="v">${A.px.toFixed(A.px<1?5:2)}</td></tr>
+      <tr><td class="k">EMA 20/50/100/200</td><td class="v">${A.e20.toFixed(2)} / ${A.e50.toFixed(2)} / ${A.e100.toFixed(2)} / ${A.e200.toFixed(2)}</td></tr>
+      <tr><td class="k">RSI(14)</td><td class="v ${clsR}">${A.r.toFixed(1)} ${A.r>=70?'Overbought':A.r<=30?'Oversold':'Neutral'}</td></tr>
+      <tr><td class="k">ADX(14)</td><td class="v ${A.adx>25?'pos':'neu'}">${A.adx.toFixed(1)} ${A.adx>25?'(มีเทรนด์)':'(sideway)'}</td></tr>
+      <tr><td class="k">SuperTrend</td><td class="v ${A.stDir===1?'pos':'neg'}">${A.stDir===1?'GREEN ↑ (long bias)':'RED ↓ (short bias)'}</td></tr>
+      <tr><td class="k">MACD Hist</td><td class="v ${A.mom>=0?'pos':'neg'}">${A.mom.toFixed(A.mom<1?4:2)}</td></tr>
+      <tr><td class="k">ATR(14)</td><td class="v">${atr.toFixed(atr<1?4:2)}</td></tr>
+      <tr><td class="k">Support / Resistance</td><td class="v">${A.sup.toFixed(2)} / ${A.res.toFixed(2)}</td></tr>`;
+
+    // ----- MTF dots -----
+    document.getElementById("mtfDots").innerHTML = TFS.map(t=>
+      `<span class="t ${mtf[t].state}">${t}:${mtf[t].state==='BULL'?'▲':mtf[t].state==='BEAR'?'▼':'—'}</span>`).join('');
+    const cons=document.getElementById("consensus");
+    cons.className="consensus "+(go?'go':'no');
+    cons.textContent = go ? "✅ เงื่อนไขเข้าเทรดครบ" : "⛔ รอเงื่อนไข";
+    document.getElementById("consensusNote").innerHTML =
+      `Higher-TF BULL: ${higherBull}/3 · BEAR: ${higherBear}/3 · RSI หลัก: ${A.r.toFixed(1)} · ` +
+      `SuperTrend: ${A.stDir===1?'GREEN':'RED'} · Uptrend: ${A.uptrend?'ใช่':'ไม่'}`;
+
+    // ----- plan card -----
+    const rr1=Math.abs(tp1-entry)/Math.abs(entry-sl);
+    document.getElementById("plan").innerHTML=`
+      <div class="level entry"><span class="lab">📍 ENTRY (${dir==='long'?'Long':'Short'})</span><span class="px">${entry.toFixed(entry<1?5:2)}</span></div>
+      <div class="level sl"><span class="lab">🛑 SL (Stop Loss)</span><span class="px">${sl.toFixed(sl<1?5:2)}</span></div>
+      <div class="level tp"><span class="lab">🎯 TP1 (+1.5R)</span><span class="px">${tp1.toFixed(tp1<1?5:2)}</span></div>
+      <div class="level tp"><span class="lab">🎯 TP2 (+3.0R)</span><span class="px">${tp2.toFixed(tp2<1?5:2)}</span></div>
+      <div class="note">R:R (TP1) = <b>${rr1.toFixed(2)}</b> · Risk = ${((Math.abs(entry-sl)/entry)*100).toFixed(2)}% จาก Entry · ${go?'✅ ผ่านเกณฑ์ Dip-Buy':'⚠️ ยังไม่เข้าเงื่อนไข — อย่าไล่ราคา'}</div>`;
+
+    // ----- sync position sizing -----
+    document.getElementById("psEntry").value=entry.toFixed(entry<1?5:2);
+    document.getElementById("psSl").value=sl.toFixed(sl<1?5:2);
+    document.getElementById("psTp").value=tp1.toFixed(tp1<1?5:2);
+    renderSize();
+
+    // ----- chart -----
+    renderChart(kl,A,{entry,sl,tp1,tp2});
+
+    ST.innerHTML='<span class="ok">✅ วิเคราะห์ '+sym+' ('+tf+') เรียบร้อย @ '+new Date().toLocaleString("th-TH")+'</span>';
+  }catch(e){ ST.innerHTML='<span class="err">❌ ผิดพลาด: '+(e.message||e)+'</span>'; }
+}
+
+// ---------- SVG chart ----------
+function renderChart(kl,A,plan){
+  const svg=document.getElementById("chart"); const W=1000,H=420,padL=8,padR=8,padT=10,padB=24;
+  const c=kl.map(k=>k[4]),h=kl.map(k=>k[2]),l=kl.map(k=>k[3]),o=kl.map(k=>k[1]),t=kl.map(k=>k[0]);
+  const e20=emaArr(c,20),e50=emaArr(c,50);
+  const allVals=[...h,...l,plan.entry,plan.sl,plan.tp1,plan.tp2];
+  const min=Math.min(...allVals),max=Math.max(...allVals); const rng=max-min||1;
+  const X=i=>padL+(W-padL-padR)*(i/(kl.length-1));
+  const Y=v=>padT+(H-padT-padB)*(1-(v-min)/rng);
+  let s="";
+  for(let g=0;g<=4;g++){const yy=padT+(H-padT-padB)*g/4;const vv=max-(rng)*g/4;
+    s+=`<line x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}" stroke="#21262d" stroke-width="1"/>`;
+    s+=`<text x="${W-padR-2}" y="${yy-3}" fill="#8b98ad" font-size="10" text-anchor="end">${vv.toFixed(vv<1?4:1)}</text>`;}
+  const bw=Math.max(2,(W-padL-padR)/kl.length*0.6);
+  kl.forEach((k,i)=>{ const yo=Y(o[i]),yc=Y(c[i]),yh=Y(h[i]),yl=Y(l[i]);
+    const col=c[i]>=o[i]?"#3fb950":"#f85149"; const xc=X(i);
+    s+=`<line x1="${xc}" y1="${yh}" x2="${xc}" y2="${yl}" stroke="${col}" stroke-width="1"/>`;
+    const top=Math.min(yo,yc),bot=Math.max(yo,yc);
+    s+=`<rect x="${xc-bw/2}" y="${top}" width="${bw}" height="${Math.max(1,bot-top)}" fill="${col}"/>`;});
+  const line=(arr,col)=>{let p="";arr.forEach((v,i)=>{p+=(i?"L":"M")+X(i)+" "+Y(v)+" ";});
+    return `<path d="${p}" fill="none" stroke="${col}" stroke-width="1.4" opacity="0.9"/>`;};
+  s+=line(e20,"#4aa8ff"); s+=line(e50,"#bc8cff");
+  const lvl=(v,col,dash,label)=>{const y=Y(v);
+    return `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="${col}" stroke-width="1.3" stroke-dasharray="${dash}"/>
+      <text x="${padL+4}" y="${y-4}" fill="${col}" font-size="11">${label} ${v.toFixed(v<1?4:2)}</text>`;};
+  s+=lvl(plan.entry,"#4aa8ff","2,2","ENTRY");
+  s+=lvl(plan.sl,"#ff5b5b","6,3","SL");
+  s+=lvl(plan.tp1,"#26d07c","2,2","TP1");
+  s+=lvl(plan.tp2,"#26d07c","2,2","TP2");
+  svg.innerHTML=s;
+  document.getElementById("chartTf").textContent="TIMEFRAME: "+CURTF+" · โซนสีฟ้า=Entry แดง=SL เขียว=TP";
+  const tip=document.getElementById("tip");
+  svg.onmousemove=(ev)=>{const rect=svg.getBoundingClientRect();
+    const xr=(ev.clientX-rect.left)/rect.width*W;
+    let i=Math.round((xr-padL)/(W-padL-padR)*(kl.length-1)); i=Math.max(0,Math.min(kl.length-1,i));
+    const bb=kl[i]; const dt=new Date(bb[0]).toLocaleString("th-TH");
+    tip.style.display="block"; tip.style.left=(ev.clientX-rect.left+12)+"px"; tip.style.top=(ev.clientY-rect.top+12)+"px";
+    tip.innerHTML=`<b>${CUR}</b> ${CURTF}<br>${dt}<br>O ${bb[1]} H ${bb[2]}<br>L ${bb[3]} C ${bb[4]}<br>Vol ${Number(bb[5]).toLocaleString()}`;};
+  svg.onmouseleave=()=>tip.style.display="none";
+}
+
+// ---------- position sizing ----------
+function renderSize(){
+  const budget=+document.getElementById("psBudget").value;
+  const lev=+document.getElementById("psLev").value;
+  let entry=+document.getElementById("psEntry").value;
+  let sl=+document.getElementById("psSl").value;
+  let tp=+document.getElementById("psTp").value;
+  if(!entry||entry<=0){ document.getElementById("psTable").innerHTML=""; document.getElementById("psNote").textContent="ใส่ราคา Entry ก่อน"; return; }
+  if(!sl||sl<=0) sl=entry*0.97;
+  if(!tp||tp<=0) tp=entry*1.05;
+  const riskPerUnit=Math.abs(entry-sl);
+  const rewardPerUnit=Math.abs(tp-entry);
+  const notional=budget*lev;
+  const qty=notional/entry;
+  const riskAmt=qty*riskPerUnit;
+  const rewardAmt=qty*rewardPerUnit;
+  const rr=rewardPerUnit/riskPerUnit;
+  const mmr=0.004;
+  const liqLong=entry*(1-1/lev+mmr);
+  const liqShort=entry*(1+1/lev-mmr);
+  document.getElementById("psTable").innerHTML=`<tr><th>งบ</th><th>Lev</th><th>Notional</th><th>Qty</th><th>SL</th><th>TP</th><th>Risk$</th><th>Reward$</th><th>R:R</th><th>Liq</th></tr>
+   <tr>
+     <td>${budget.toFixed(0)}</td><td>${lev}x</td><td>${notional.toFixed(0)}</td>
+     <td>${qty.toFixed(qty<1?4:2)}</td><td>${sl.toFixed(sl<1?4:2)}</td><td>${tp.toFixed(tp<1?4:2)}</td>
+     <td class="neg">${riskAmt.toFixed(2)}</td><td class="pos">${rewardAmt.toFixed(2)}</td>
+     <td><b class="${rr>=1.5?'pos':rr<1?'neg':'neu'}">${rr.toFixed(2)}</b></td>
+     <td class="neg">${liqLong.toFixed(liqLong<1?4:2)}</td></tr>`;
+  document.getElementById("psNote").innerHTML=
+    `💡 งบ $${budget} @ ${lev}x → Notional ${notional.toFixed(0)} USDT · Risk ${riskAmt.toFixed(2)}$ (${((riskPerUnit/entry)*100).toFixed(2)}%) · `+
+    `R:R ${rr.toFixed(2)} ${rr>=1.5?'✅':'⚠️ ควร ≥1.5'} · Liq(Long) หัก Maintenance 0.4% (ประมาณ)`;
+}
+
+// ---------- init ----------
+async function init(){
+  try{ symList=await fetch(FAPI+"exchangeInfo").then(r=>r.json());
+    symList=symList.symbols.filter(s=>s.contractType==="PERPETUAL"&&s.quoteAsset==="USDT"&&s.status==="TRADING").map(s=>s.symbol);
+  }catch(e){}
+  const inp=document.getElementById("sym");
+  inp.addEventListener("input",()=>{ const v=inp.value.toUpperCase();
+    if(v.length>=2){ const m=symList.filter(s=>s.includes(v)).slice(0,8);
+      let dl=document.getElementById("dl"); if(!dl){dl=document.createElement("datalist");dl.id="dl";inp.after(dl);}
+      dl.innerHTML=m.map(s=>`<option value="${s}">`).join(""); inp.setAttribute("list","dl"); }});
+  document.getElementById("go").onclick=()=>{ CUR=(inp.value.toUpperCase()||"BTCUSDT"); if(!CUR.includes("USDT"))CUR+="USDT";
+    CURTF=document.getElementById("tf").value; analyzeEntry(); };
+  inp.addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("go").click();});
+  document.getElementById("style").onchange=()=>analyzeEntry();
+  document.getElementById("tf").onchange=()=>{ CURTF=document.getElementById("tf").value; };
+  ["psBudget","psLev","psEntry","psSl","psTp"].forEach(id=>document.getElementById(id).addEventListener("input",renderSize));
+  analyzeEntry();
+}
+init();
+</script>
+</body>
+</html>
