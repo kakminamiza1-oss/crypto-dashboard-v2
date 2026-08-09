@@ -120,6 +120,28 @@
       </div>
       <button id="multiGo" class="ghost">🔎 สแกน + จัดอันดับ</button>
     </div>
+    <div class="controls" style="margin-bottom:8px">
+      <div class="fld">
+        <label>กรองตาราง</label>
+        <select id="rankFilter">
+          <option value="all" selected>ทั้งหมด</option>
+          <option value="pass">✅ ผ่านเงื่อนไขเท่านั้น</option>
+          <option value="rr15">R:R ≥ 1.5</option>
+          <option value="rr20">R:R ≥ 2.0</option>
+          <option value="bull">H-Bull ≥ 2</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label>อัปเดตอัตโนมัติ</label>
+        <select id="autoSel">
+          <option value="0" selected>ปิด</option>
+          <option value="60">ทุก 60 วิ</option>
+          <option value="120">ทุก 120 วิ</option>
+          <option value="300">ทุก 5 นาที</option>
+        </select>
+      </div>
+      <button id="autoBtn" class="ghost">▶ เริ่มอัตโนมัติ</button>
+    </div>
     <div id="multiStatus" class="status"></div>
     <table class="table2" id="rankTbl" style="margin-top:8px"></table>
     <div class="note">คลิกแถวเพื่อโหลดเหรียญนั้นเข้าเครื่องมือวิเคราะห์จุดเข้าเดี่ยวด้านบน · คะแนน = (Higher-TF BULL × 20) + (Dip-Buy ผ่าน? 25) + R:R×10 + (ADX>25?10:0) − (RSI>66?15:0)</div>
@@ -260,7 +282,40 @@ function tfState(kl){
           sup:Math.min(e20,e50), res:Math.max(...h.slice(-60))*0.995};
 }
 
-// ---------- multi-symbol scan + ranking (offer #2) ----------
+// ---------- multi-symbol scan + ranking (offers 1 & 2) ----------
+let LAST_RESULTS=[];   // keep last scan for filter + auto-refresh
+let AUTO_TIMER=null;
+
+function renderRank(){
+  const f=document.getElementById("rankFilter").value;
+  let rows=LAST_RESULTS.slice();
+  if(f==="pass") rows=rows.filter(r=>r.dipOK);
+  else if(f==="rr15") rows=rows.filter(r=>!isNaN(+r.rr) && +r.rr>=1.5);
+  else if(f==="rr20") rows=rows.filter(r=>!isNaN(+r.rr) && +r.rr>=2.0);
+  else if(f==="bull") rows=rows.filter(r=>r.higherBull>=2);
+  const t=document.getElementById("rankTbl");
+  if(!rows.length){ t.innerHTML=`<tr><td colspan="14" class="neu">— ไม่มีตัวที่เข้าเงื่อนไข filter —</td></tr>`; return; }
+  t.innerHTML=`<tr><th>#</th><th>เหรียญ</th><th>ราคา</th><th>RSI</th><th>ADX</th><th>ST</th>
+    <th>MTF</th><th>H-Bull</th><th>R:R</th><th>คะแนน</th><th>สถานะ</th><th>Entry</th><th>SL</th><th>TP1</th></tr>`+
+    rows.map((r,i)=>{
+      if(r.err) return `<tr><td>${i+1}</td><td>${r.sym}</td><td colspan="12" class="neg">${r.err}</td></tr>`;
+      const cls=r.dipOK?'pos':'neu';
+      return `<tr data-sym="${r.sym}" style="cursor:pointer" title="คลิกเพื่อโหลดเครื่องมือเดี่ยว">
+        <td>${i+1}</td><td><b>${r.sym.replace('USDT','')}</b></td><td>${r.px}</td>
+        <td>${r.r}</td><td>${r.adx}</td><td>${r.st}</td><td>${r.mtf}</td><td>${r.higherBull}/3</td>
+        <td><b class="${r.rr>=1.5?'pos':'neu'}">${r.rr}</b></td>
+        <td><b class="${cls}">${r.score}</b></td>
+        <td class="${cls}">${r.dipOK?'✅ ผ่าน':'⛔ รอ'}</td>
+        <td>${r.entry}</td><td class="neg">${r.sl}</td><td class="pos">${r.tp1}</td></tr>`;
+    }).join('');
+  t.querySelectorAll("tr[data-sym]").forEach(tr=>tr.onclick=()=>{
+    document.getElementById("sym").value=tr.dataset.sym;
+    CUR=tr.dataset.sym; CURTF=document.getElementById("tf").value;
+    analyzeEntry();
+    window.scrollTo({top:0,behavior:"smooth"});
+  });
+}
+
 async function scanAll(){
   const box=document.getElementById("multiSym").value;
   const raw=box.split(/[\s,]+/).map(s=>s.trim().toUpperCase()).filter(Boolean)
@@ -307,28 +362,19 @@ async function scanAll(){
     MS.innerHTML="⏳ สแกน "+(i+1)+"/"+raw.length+" … "+sym;
   }
   results.sort((a,b)=> (b.score||-999)-(a.score||-999));
-  const t=document.getElementById("rankTbl");
-  t.innerHTML=`<tr><th>#</th><th>เหรียญ</th><th>ราคา</th><th>RSI</th><th>ADX</th><th>ST</th>
-    <th>MTF</th><th>H-Bull</th><th>R:R</th><th>คะแนน</th><th>สถานะ</th><th>Entry</th><th>SL</th><th>TP1</th></tr>`+
-    results.map((r,i)=>{
-      if(r.err) return `<tr><td>${i+1}</td><td>${r.sym}</td><td colspan="12" class="neg">${r.err}</td></tr>`;
-      const cls=r.dipOK?'pos':'neu';
-      return `<tr data-sym="${r.sym}" style="cursor:pointer" title="คลิกเพื่อโหลดเครื่องมือเดี่ยว">
-        <td>${i+1}</td><td><b>${r.sym.replace('USDT','')}</b></td><td>${r.px}</td>
-        <td>${r.r}</td><td>${r.adx}</td><td>${r.st}</td><td>${r.mtf}</td><td>${r.higherBull}/3</td>
-        <td><b class="${r.rr>=1.5?'pos':'neu'}">${r.rr}</b></td>
-        <td><b class="${cls}">${r.score}</b></td>
-        <td class="${cls}">${r.dipOK?'✅ ผ่าน':'⛔ รอ'}</td>
-        <td>${r.entry}</td><td class="neg">${r.sl}</td><td class="pos">${r.tp1}</td></tr>`;
-    }).join('');
-  // click row -> load single
-  t.querySelectorAll("tr[data-sym]").forEach(tr=>tr.onclick=()=>{
-    document.getElementById("sym").value=tr.dataset.sym;
-    CUR=tr.dataset.sym; CURTF=document.getElementById("tf").value;
-    analyzeEntry();
-    window.scrollTo({top:0,behavior:"smooth"});
-  });
+  LAST_RESULTS=results;
+  renderRank();
   MS.innerHTML='<span class="ok">✅ สแกน '+results.length+' เหรียญ เรียบร้อย @ '+new Date().toLocaleString("th-TH")+' — เรียงตามคะแนนแล้ว</span>';
+}
+
+function startAuto(){
+  const sec=+document.getElementById("autoSel").value;
+  if(AUTO_TIMER){ clearInterval(AUTO_TIMER); AUTO_TIMER=null; }
+  const btn=document.getElementById("autoBtn");
+  if(!sec){ btn.textContent="▶ เริ่มอัตโนมัติ"; btn.classList.add("ghost"); return; }
+  btn.textContent="⏸ หยุดอัตโนมัติ"; btn.classList.remove("ghost");
+  scanAll();                                  // run immediately
+  AUTO_TIMER=setInterval(()=>{ if(document.getElementById("autoSel").value==String(sec)) scanAll(); }, sec*1000);
 }
 
 // ---------- main analyze ----------
@@ -506,6 +552,8 @@ async function init(){
   document.getElementById("style").onchange=()=>analyzeEntry();
   document.getElementById("tf").onchange=()=>{ CURTF=document.getElementById("tf").value; };
   document.getElementById("multiGo").onclick=()=>{ CURTF=document.getElementById("tf").value; scanAll(); };
+  document.getElementById("autoBtn").onclick=()=>{ CURTF=document.getElementById("tf").value; startAuto(); };
+  document.getElementById("rankFilter").onchange=()=>renderRank();
   ["psBudget","psLev","psEntry","psSl","psTp"].forEach(id=>document.getElementById(id).addEventListener("input",renderSize));
   analyzeEntry();
 }
