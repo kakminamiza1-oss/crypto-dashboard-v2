@@ -1,0 +1,49 @@
+# Build output
+dist/
+build/
+*.min.*
+
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+.env.production.local
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+
+# Certificates & Keys (just in case)
+*.pem
+*.key
+*.jks
+secrets/
+
+# OS
+.DS_Store
+.AppleDouble
+.LSOverride
+*.swp
+*~
+
+# Temp files
+*.tmp
+.cache
+.parcel-cache
